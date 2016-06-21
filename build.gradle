@@ -1,0 +1,124 @@
+plugins {
+    id "com.eriwen.gradle.css" version "2.12.0"
+    id "com.eriwen.gradle.js" version "2.12.0"
+}
+
+// In this section you declare where to find the dependencies of your project
+repositories {
+    // Use 'jcenter' for resolving your dependencies.
+    // You can declare any Maven/Ivy/file repository here.
+    jcenter()
+}
+
+configurations {
+    js
+}
+
+// In this section you declare the dependencies for your production and test code
+dependencies {
+    // The production code uses the SLF4J logging API at compile time
+    js 'org.webjars:jquery:3.0.0'
+
+    // Declare the dependency for your favourite test framework you want to use in your tests.
+    // TestNG is also supported by the Gradle Test task. Just change the
+    // testCompile dependency to testCompile 'org.testng:testng:6.8.1' and add
+    // 'test.useTestNG()' to your build script.
+    //testCompile 'junit:junit:3.8.2'
+}
+
+//--------------------
+//-- JS Methods ------
+//--------------------
+javascript.source {
+    global { // TODO add any env specific settings as a sibbling of global
+        js {
+            srcDir "src/scripts"
+            include "*.js"
+        }
+    }
+}
+
+combineJs {
+    encoding = "UTF-8"
+    source = javascript.source.global.js
+    dest = file("${targetDir}/js/fac.js")
+}
+
+minifyJs {
+    source = combineJs
+    dest = file("${targetDir}/js/fac-min.js")
+    sourceMap = file("${targetDir}/fac.sourcemap.json")
+    closure {
+        compilationLevel = "ADVANCED_OPTIMIZATIONS"
+    }
+}
+
+gzipJs {
+    source = minifyJs
+    dest = file("${targetDir}/fac-min-js.gz") // TODO should this be .js?
+}
+
+tasks.jshint {
+    source = javascript.source.global.js.files
+    dest = file("${targetDir}/report/jshint.out")
+    reporter = "checkstyle"
+    jshint.options = [expr : "true", unused: "true"]
+    ignoreExitCode = false
+}
+
+tasks.jsdoc {
+    source = javascript.source.global.js.files
+    destinationDir = file("${targetDir}/jsdoc")
+}
+
+//TODO Add requireJs if dependency management becomes a pain
+
+//--------------------
+//-- CSS Methods -----
+//--------------------
+css.source {
+    global {
+        css {
+            srcDir "src/styles"
+            srcDir "target/gen/styles"
+            include "*.css"
+        }
+    }
+}
+
+lesscss {
+    source = fileTree(dir: "src/styles", include: "*.less")
+    dest = "${lessGenDir}"
+}
+
+combineCss {
+    source = css.source.global.css.files
+    dest = file("${targetDir}/css/fac.css")
+    dependsOn lesscss
+}
+
+minifyCss {
+    source = combineCss
+    dest = file("${targetDir}/css/fac-min.css")
+}
+
+gzipCss {
+    source = minifyCss
+    dest = file("${targetDir}/fac-min-css.gz") // TODO should this be .css?
+}
+
+csslint {
+    source = css.source.global.css.files
+    dest = file("${targetDir}/report/csslint.out")
+    // TODO add error string ids to fail builds for bad stuff csslint --list-rules
+    //errors = ["someStringId"]
+}
+
+defaultTasks 'clean', 'build'
+
+task clean {
+    delete targetDir
+}
+
+task build(dependsOn: [tasks.jshint, csslint, gzipJs, gzipCss, tasks.jsdoc]) {
+}

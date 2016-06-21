@@ -1,0 +1,2 @@
+include 'gradle.properties'
+rootProject.name = 'front-and-center'

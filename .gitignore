@@ -1,0 +1,4 @@
+target/
+.gradle/
+gradle.properties
+src/css-gen/

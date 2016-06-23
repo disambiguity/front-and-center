@@ -26,6 +26,18 @@ dependencies {
     //testCompile 'junit:junit:3.8.2'
 }
 
+ext {
+    targetDir = "target"
+    lessGenDir = "${targetDir}/gen/styles"
+    reportDir = "${targetDir}/report"
+    delivDir = "${targetDir}/www"
+    scriptsDelivDir = "${delivDir}/scripts"
+    stylesDelivDir = "${delivDir}/styles"
+    imgDelivDir = "${delivDir}/img"
+    libraryDir = "lib"
+    scriptsLibDir = "${libraryDir}/scripts"
+}
+
 //--------------------
 //-- JS Methods ------
 //--------------------
@@ -41,13 +53,13 @@ javascript.source {
 combineJs {
     encoding = "UTF-8"
     source = javascript.source.global.js
-    dest = file("${targetDir}/js/fac.js")
+    dest = file("${scriptsDelivDir}/fac.js")
 }
 
 minifyJs {
     source = combineJs
-    dest = file("${targetDir}/js/fac-min.js")
-    sourceMap = file("${targetDir}/fac.sourcemap.json")
+    dest = file("${scriptsDelivDir}/fac-min.js")
+    sourceMap = file("${delivDir}/fac.sourcemap.json")
     closure {
         compilationLevel = "ADVANCED_OPTIMIZATIONS"
     }
@@ -55,12 +67,12 @@ minifyJs {
 
 gzipJs {
     source = minifyJs
-    dest = file("${targetDir}/fac-min-js.gz") // TODO should this be .js?
+    dest = file("${delivDir}/fac-min-js.gz") // TODO should this be .js?
 }
 
 tasks.jshint {
     source = javascript.source.global.js.files
-    dest = file("${targetDir}/report/jshint.out")
+    dest = file("${reportDir}/jshint.out")
     reporter = "checkstyle"
     jshint.options = [expr : "true", unused: "true"]
     ignoreExitCode = false
@@ -68,7 +80,7 @@ tasks.jshint {
 
 tasks.jsdoc {
     source = javascript.source.global.js.files
-    destinationDir = file("${targetDir}/jsdoc")
+    destinationDir = file("${reportDir}/jsdoc")
 }
 
 //TODO Add requireJs if dependency management becomes a pain
@@ -93,23 +105,23 @@ lesscss {
 
 combineCss {
     source = css.source.global.css.files
-    dest = file("${targetDir}/css/fac.css")
+    dest = file("${stylesDelivDir}/fac.css")
     dependsOn lesscss
 }
 
 minifyCss {
     source = combineCss
-    dest = file("${targetDir}/css/fac-min.css")
+    dest = file("${stylesDelivDir}/fac-min.css")
 }
 
 gzipCss {
     source = minifyCss
-    dest = file("${targetDir}/fac-min-css.gz") // TODO should this be .css?
+    dest = file("${delivDir}/fac-min-css.gz") // TODO should this be .css?
 }
 
 csslint {
     source = css.source.global.css.files
-    dest = file("${targetDir}/report/csslint.out")
+    dest = file("${reportDir}/csslint.out")
     // TODO add error string ids to fail builds for bad stuff csslint --list-rules
     //errors = ["someStringId"]
 }
@@ -120,5 +132,20 @@ task clean {
     delete targetDir
 }
 
-task build(dependsOn: [tasks.jshint, csslint, gzipJs, gzipCss, tasks.jsdoc]) {
+task copyHtml(type: Copy) {
+    from "src/html"
+    into "${delivDir}"
+}
+
+task resolveScriptLibs(type: Copy) {
+    from configurations.js
+    into "${scriptsLibDir}"
+}
+
+task copyScriptLibs(dependsOn: resolveScriptLibs, type: Copy) {
+    from "${scriptsLibDir}"
+    into "${scriptsDelivDir}"
+}
+
+task build(dependsOn: [tasks.jshint, csslint, gzipJs, gzipCss, copyHtml, copyScriptLibs, tasks.jsdoc]) {
 }
